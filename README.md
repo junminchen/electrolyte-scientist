@@ -1,63 +1,84 @@
 # Electrolyte-Scientist: Automated Expert for Electrolyte MD Simulations
 
-Electrolyte-Scientist is an advanced toolset designed for the high-throughput discovery and characterization of battery electrolytes. It automates the entire pipeline from formulation processing to multi-GPU molecular dynamics (MD) execution and structural analysis using the ByteFF force field and OpenMM.
+Electrolyte-Scientist is an automated workflow toolset for high-throughput discovery and characterization of battery electrolytes.
 
-## 🚀 Core Features
+## ⚙️ Prerequisites & Dependencies
 
-- **Automated Formulation Processing**: Converts raw text/JSON recipes into MD-ready systems.
-- **Smart Charge Balancing**: Automatically detects ions from SMILES and enforces system neutrality.
-- **Multi-GPU Orchestration**: Intelligently distributes tasks across up to 8 GPUs with a single command.
-- **Parameter Bypassing**: Efficiently reuses existing force field parameters from a shared library to avoid redundant model inference.
-- **Advanced Analysis**: Built-in support for RDF, Coordination Number (CN), and transport property calculations (Viscosity, Conductivity, MSD).
+Before running the simulations, ensure your environment meets the following requirements:
 
-## 📂 Project Structure
+### 🛠️ Environment Requirements
+- **Conda Environment**: `bff` (recommended)
+- **Python**: 3.11+
+- **CUDA**: 12.0+
+- **GROMACS**: Installed and accessible via `gmx` command.
 
-```text
-electrolyte-scientist/
-├── SKILL.md            # Skill definition for Gemini CLI integration
-├── README.md           # This documentation
-├── scripts/            # Core execution scripts
-│   ├── setup_md_runs.py      # System builder & topology generator
-│   ├── smart_launcher.py     # Multi-GPU batch task runner
-│   ├── protocol.py           # Custom MD workflow with 11->14 dimension patch
-│   ├── run_md_separate.py    # Per-task execution entry point
-│   ├── run_rdf_analysis.py   # Structural coordination analysis
-│   └── calc_msd.py           # Diffusion coefficient calculations
-└── assets/             # Templates and static metadata
+### 📦 Key Python Packages
+```bash
+pip install openmm MDAnalysis tidynamics seaborn pandas
+```
+*Note: Requires the **ByteFF** force field library and **velocityverletplugin** for OpenMM.*
+
+---
+
+## 📍 Critical Path Configuration
+
+This toolset relies on several absolute paths. **Before running, please verify the following in `scripts/`**:
+
+1. **Parameter Library**: In `scripts/setup_md_runs.py`, set `SHARED_PARAMS_ROOT` to your shared parameter directory.
+   ```python
+   SHARED_PARAMS_ROOT = "/path/to/your/shared_params"
+   ```
+2. **Environment Paths**: In `scripts/smart_launcher.py`, verify the Python and OpenMM library paths:
+   ```python
+   PYTHON_EXEC = "/home/user/miniconda3/envs/bff/bin/python"
+   OPENMM_LIB = "/home/user/miniconda3/envs/bff/lib"
+   ```
+3. **LD_LIBRARY_PATH**: Ensure your `LD_LIBRARY_PATH` includes the OpenMM and CUDA lib paths to avoid `ModuleNotFoundError` during background runs.
+
+---
+
+## 📥 Installation
+
+### As a Standalone Toolset
+```bash
+git clone https://github.com/junminchen/electrolyte-scientist.git
+cd electrolyte-scientist
 ```
 
-## 🛠️ Usage Guide
+### As a Gemini CLI Skill
+To enable Gemini CLI to use this expert knowledge, add this directory to your skills search path or link it:
+```bash
+# In your .bashrc or .zshrc
+export GEMINI_SKILLS_PATH="$GEMINI_SKILLS_PATH:/path/to/electrolyte-scientist"
+```
+Then in Gemini CLI: `activate_skill electrolyte-scientist`
 
-### 1. Prepare Your Library
-Edit `electrolytes_library.json` to include your SMILES metadata and formulations.
+---
 
-### 2. Generate Simulation Directories
-Run the setup script to create structured task folders and link parameters from your `shared_params` library:
+## 🚀 Usage Workflow
+
+### 1. Define Formulations
+Update `electrolytes_library.json` with your SMILES strings and target molar ratios.
+
+### 2. Prepare System & Links
+Generate individual run directories and symlink parameters from the shared library:
 ```bash
 python3 scripts/setup_md_runs.py
 ```
 
-### 3. Launch Batch Simulations
-Distribute your tasks (e.g., tasks indexed 25 to 34) across all available GPUs (0-7):
+### 3. Launch Simulations
+Batch launch tasks (e.g., indices 25-34) across all available GPUs (0-7):
 ```bash
 python3 scripts/smart_launcher.py 25 34
 ```
 
-### 4. Monitor Progress
-Check logs in real-time for any task:
+### 4. Analysis
+After completion, use the analysis scripts:
 ```bash
-tail -f run_25_*/md.log
+python3 scripts/run_rdf_analysis.py  # Coordination shell analysis
+python3 scripts/calc_msd.py          # Diffusion coefficients
 ```
 
-## 🔧 Environment Requirements
-
-- **Python**: 3.11+ (Conda environment `bff` recommended)
-- **OpenMM**: 8.0+
-- **ByteFF**: Core force field library
-- **CUDA**: 12.0+
-
-## 📄 Standardized Reporting
-All results are generated in an **HKRI-SciComp** compatible format, facilitating integration into machine learning datasets for future electrolyte inverse design.
-
 ---
-Developed by the Electrolyte Discovery Team.
+## 📄 Standardized Reporting
+All outputs are generated in **HKRI-SciComp** format, ready for machine learning dataset integration.
